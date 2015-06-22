@@ -37,8 +37,8 @@ def roomId_list(criteria, maximum):
 	searhPage_url="https://www.airbnb.com/s/" + criteria + "?ss_id=i4wdsv9i"
 	
 	last = last_page(searhPage_url)
-	if last > maximum:
-		last = maximum
+	if int(last) > int(maximum):
+		last = int(maximum) - 1
 	res = [];
 	for i in range(1, last + 1):
 		Page_url="https://www.airbnb.com/s/" + criteria + "?ss_id=i4wdsv9i&page=" + str(i)
