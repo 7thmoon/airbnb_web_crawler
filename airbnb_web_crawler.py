@@ -1,3 +1,4 @@
+import os
 import requests
 import sys
 import time
@@ -8,12 +9,31 @@ import unicodedata
 from datetime import datetime
 from roomid import *
 
+if len(sys.argv) == 1:
+	print "Usage: " +  sys.argv[0] + " search_criteria page_limits"
+	sys.exit(1) 
 #search criteria
 criteria = sys.argv[1]
-#maximum pages
-maximum = sys.argv[2]
+searh_page_url="https://www.airbnb.com/s/" + criteria 
 base_url="https://www.airbnb.com"
+try:
+	page_number = int(last_page(searh_page_url))
+except:
+	print "fail to get last page number"
+	sys.exit(1)
 
+page_limits = page_number
+if len(sys.argv) > 2:
+	try:
+		threshold = int(sys.argv[2])
+		if page_limits > threshold:
+			page_limits = threshold
+	except:
+		print "invalid page limits"
+		sys.exit(1) 
+
+
+last_page = last_page(searh_page_url)
 
 price_pattern = {
     'day_l': 'price_amount',
@@ -37,6 +57,15 @@ def get_price_from_airbnb(pattern, html):
         except:
             price[name]=None
     return price
+
+def get_userId_from_airbnb(html):
+	r = None
+	try:
+		url = html.find('li', attrs={'class':'user-image'}).find('a')['href']
+		r = url.split('/')[3]
+	except:
+		pass
+	return r
 
 def get_name_from_airbnb(html):
     r = None
@@ -83,7 +112,8 @@ def get_rating_from_airbnb(html):
     except:
         pass
     return rating
- 
+
+#only a code sample; not applicable
 def get_accommodates_from_airbnb(html):
     r = None
     try:
@@ -123,39 +153,32 @@ class Room:
 		room_url = base_url + roomId
 		r = requests.get(room_url)
 		soup = BeautifulSoup(r.text)
-		self.name=get_name_from_airbnb(soup)
-		self.rating=get_rating_from_airbnb(soup)
-		self.price=get_price_from_airbnb(price_pattern, soup)
-		self.address=get_address_from_airbnb(soup)
-		self.rooms=get_bedrooms_from_airbnb(soup)
-		self.updated=datetime.now()
+		self.userId = get_userId_from_airbnb(soup)
+		#self.name=get_name_from_airbnb(soup)
+		#self.rating=get_rating_from_airbnb(soup)
+		#self.price=get_price_from_airbnb(price_pattern, soup)
+		#self.address=get_address_from_airbnb(soup)
+		#self.rooms=get_bedrooms_from_airbnb(soup)
+		#self.updated=datetime.now()
 
 		
 def convertToCSV(room):
 	f = open(filename, 'a')
 	try:
-		#daily_price = str(room.price.get('day_l').encode('utf8'))
-		#rating = str(room.rating.get('rating'))
-		#reviews = str(room.rating.get('reviews'))
-		#address = str(room.address.get('address').encode('utf8'))
-		#name = str(room.name)
-		#stream = room.id + ','  + rating  + ',' + reviews \
-		#	+ ',' +  daily_price + ',' + room.rooms + ',' + str(room.updated) + ',' + name + ',' + address + '\n'
-		#print stream
-		#f.write(stream.encode('utf8'))'
 		f.write(str(room.id))
 		f.write(',')
-		f.write(str(room.rating.get('rating')))
-		f.write(',')
-		f.write(str(room.rating.get('reviews')))
-		f.write(',')
-		f.write(str(room.price.get('day_l')))
-		f.write(',')
-		f.write(str(room.rooms))
-		f.write(',')
-		f.write(str(room.updated))
-		f.write(',')
-		f.write(str(room.name.encode('utf-8')))
+		f.write(str(room.userId))
+		#f.write(str(room.rating.get('rating')))
+		#f.write(',')
+		#f.write(str(room.rating.get('reviews')))
+		#f.write(',')
+		#f.write(str(room.price.get('day_l')))
+		#f.write(',')
+		#f.write(str(room.rooms))
+		#f.write(',')
+		#f.write(str(room.updated))
+		#f.write(',')
+		#f.write(str(room.name.encode('utf-8')))
 		f.write('\n')
 	except:
 		attrs = vars(room)
@@ -168,17 +191,21 @@ def convertToCSV(room):
 	f.close()
 	
 filename = criteria + '.csv'
-errorlog=  criteria + '.error'
+errorlog=  criteria + '.err'
 f = open(filename, 'wb')
-f.write("id,rating,reviews,daily_price,bedrooms,update_time,name,address\n")
+#f.write("id,rating,reviews,daily_price,bedrooms,update_time,name,address\n")
 f.close()
 f = open(errorlog, 'wb')
 f.close()
-for roomId in roomId_list(criteria, maximum):
+for roomId in roomId_list(searh_page_url, page_limits):
 	r = Room(roomId)
 	attrs = vars(r)
 	print ', '.join("%s: %s" % item for item in attrs.items())
 	convertToCSV(r)
+
+if len(open(errorlog).readlines()) == 0:
+	os.system("rm " + errorlog)
+
 	
 	
 

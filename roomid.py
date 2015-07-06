@@ -19,8 +19,8 @@ def last_page(url):
 				arr.append(num)
 			except:
 				pass
-	arr.sort()
-	return arr[-1]
+	#arr.sort()
+	return max(arr)
 
 def get_roomId_pasePage(url):	
 	r = requests.get(url)
@@ -31,18 +31,13 @@ def get_roomId_pasePage(url):
 		arr.append(tmp)
 	return arr
 	
-
-def roomId_list(criteria, maximum):
+#get the room list based on search criteria and page limits
+def roomId_list(searhPage_url, pages):
 	page = "";
-	searhPage_url="https://www.airbnb.com/s/" + criteria + "?ss_id=i4wdsv9i"
-	
-	last = last_page(searhPage_url)
-	if int(last) > int(maximum):
-		last = int(maximum)
 	res = [];
-	for i in range(1, last + 1):
-		Page_url="https://www.airbnb.com/s/" + criteria + "?ss_id=i4wdsv9i&page=" + str(i)
-		for j in get_roomId_pasePage(Page_url):
+	for i in range(1, pages + 1):
+		Page_url = searhPage_url + "&page=" + str(i)
+		for j in get_roomId_pasePage(searhPage_url):
 			res.append(j)
 	return res
 
