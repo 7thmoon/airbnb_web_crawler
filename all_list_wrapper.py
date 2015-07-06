@@ -2,6 +2,9 @@ import os
 import sys
 import re
 
+# this script is to get the total list on airbnb given by a city list
+# the city list includes city name and state, which is separated by '\t'
+# we can choose the number of cities to search from the top of the list 
 if len(sys.argv) == 1:
 	print "Usage: " +  sys.argv[0] + " city_list_file city_number"
 	sys.exit(1)
@@ -44,7 +47,7 @@ if complete_number == city_number :
 	print "task is completed for"  + city_cfg
 	sys.exit(0)
 
-lines = [line.rstrip('\r                      \n') for line in open(city_cfg)]
+lines = [line.rstrip('\r\n') for line in open(city_cfg)]
 for l in lines[0:city_number]:
 	city = l.split('\t')[0]
 	try:

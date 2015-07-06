@@ -9,6 +9,8 @@ import unicodedata
 from datetime import datetime
 from roomid import *
 
+
+# this scipt is to extract the information about the list on airbnb given by search criteria
 if len(sys.argv) == 1:
 	print "Usage: " +  sys.argv[0] + " search_criteria page_limits"
 	sys.exit(1) 

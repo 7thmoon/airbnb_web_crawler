@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup
 import requests
 from datetime import datetime
 
-
+# get the last page of search result
 def last_page(url):
 	r = requests.get(url)
 	soup = BeautifulSoup(r.text)
@@ -22,6 +22,7 @@ def last_page(url):
 	#arr.sort()
 	return max(arr)
 
+# get the room id on each page
 def get_roomId_pasePage(url):	
 	r = requests.get(url)
 	soup = BeautifulSoup(r.text)
