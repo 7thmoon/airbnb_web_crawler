@@ -8,7 +8,11 @@ import csv
 import unicodedata
 from datetime import datetime
 from roomid import *
-
+import pandas as pd
+from pandas import ExcelWriter
+import openpyxl
+from collections import defaultdict
+import matplotlib.pyplot as plt
 
 # this scipt is to extract the information about the list on airbnb given by search criteria
 if len(sys.argv) == 1:
@@ -18,6 +22,11 @@ if len(sys.argv) == 1:
 criteria = sys.argv[1]
 searh_page_url="https://www.airbnb.com/s/" + criteria 
 base_url="https://www.airbnb.com"
+csv_filename = criteria + '.csv'
+xlsx_filename = criteria + '.xlsx'
+errorlog=  criteria + '.err'
+
+
 try:
 	page_number = int(last_page(searh_page_url))
 except:
@@ -38,24 +47,30 @@ if len(sys.argv) > 2:
 last_page = last_page(searh_page_url)
 
 price_pattern = {
-    'day_l': 'price_amount',
-    'day_h': 'price_amount',
-    'week_l': 'weekly_price_string',
-    'week_h': 'weekly_price_string',
-    'month_l': 'monthly_price_string',
-    'month_h': 'monthly_price_string',
+    "day_l": "price_amount",
+    "day_h": "price_amount",
+    "week_l": "weekly_price_string",
+    "week_h": "weekly_price_string",
+    "month_l": "monthly_price_string",
+    "month_h": "monthly_price_string",
 }
  
 address_pattern = {
-    'address': 'display-address',
-    'zip-code': None,
-    }
- 
+    "city": "display-address",
+    "zip-code": None,
+}
+
+	
+rating_pattern = {
+	'reviews': None,
+    'rating': None
+}
+			
 def get_price_from_airbnb(pattern, html):
     price={}    
     for name, id in pattern.iteritems():
         try:
-            price[name]=html.find(id=id).get_text(strip=True)
+            price[name]=int(html.find(id=id).get_text(strip=True)[1:])
         except:
             price[name]=None
     return price
@@ -81,13 +96,14 @@ def get_name_from_airbnb(html):
  
 def get_address_from_airbnb(html):
     address = {
-               'address': None,
+               'city': None,
                'zip-code': None
                }
     try:
-        a = html.find(id='display-address')['data-location']
-        if a[-13:]=='United States':
-			address['address']=a
+		a = html.find(id='display-address')['data-location']
+		address['city'] = a
+        #if a[-13:]=='United States':
+		#address['city'] = a
     except:
         pass
     return address
@@ -149,38 +165,47 @@ def get_bathrooms_from_airbnb(html):
         pass
     return r
 
-class Room:
+class Room(object):
 	def __init__(self, roomId):
 		self.id=roomId.split('/')[2].split('?')[0]
 		room_url = base_url + roomId
 		r = requests.get(room_url)
 		soup = BeautifulSoup(r.text)
 		self.userId = get_userId_from_airbnb(soup)
-		#self.name=get_name_from_airbnb(soup)
-		#self.rating=get_rating_from_airbnb(soup)
-		#self.price=get_price_from_airbnb(price_pattern, soup)
-		#self.address=get_address_from_airbnb(soup)
-		#self.rooms=get_bedrooms_from_airbnb(soup)
+		self.name=get_name_from_airbnb(soup)
+		self.rating=get_rating_from_airbnb(soup)['rating']
+		self.review=get_rating_from_airbnb(soup)['reviews']
+		self.price=get_price_from_airbnb(price_pattern, soup)['day_l']
+		self.city=get_address_from_airbnb(soup)['city']
+		self.rooms=get_bedrooms_from_airbnb(soup)
 		#self.updated=datetime.now()
 
 		
 def convertToCSV(room):
+	f = open(csv_filename, 'wb')
+	#f.write("id,rating,reviews,daily_price,bedrooms,update_time,name,address\n")
+	f.close()
+	f = open(errorlog, 'wb')
+	f.close()
 	f = open(filename, 'a')
 	try:
 		f.write(str(room.id))
-		f.write(',')
+		f.write('|')
 		f.write(str(room.userId))
-		#f.write(str(room.rating.get('rating')))
-		#f.write(',')
-		#f.write(str(room.rating.get('reviews')))
-		#f.write(',')
-		#f.write(str(room.price.get('day_l')))
-		#f.write(',')
+		f.write('|')
+		f.write(str(room.rating.get('rating')))
+		f.write('|')
+		f.write(str(room.rating.get('reviews')))
+		f.write('|')
+		f.write(str(room.price.get('day_l')))
+		f.write('|')
 		#f.write(str(room.rooms))
 		#f.write(',')
 		#f.write(str(room.updated))
 		#f.write(',')
-		#f.write(str(room.name.encode('utf-8')))
+		f.write(str(room.name.encode('utf-8')))
+		#f.write('|')
+		#f.write(str(room.address.encode('utf-8')))
 		f.write('\n')
 	except:
 		attrs = vars(room)
@@ -192,18 +217,30 @@ def convertToCSV(room):
 		pass
 	f.close()
 	
-filename = criteria + '.csv'
-errorlog=  criteria + '.err'
-f = open(filename, 'wb')
-#f.write("id,rating,reviews,daily_price,bedrooms,update_time,name,address\n")
-f.close()
-f = open(errorlog, 'wb')
-f.close()
+
+
+
+
+room_list = {}
 for roomId in roomId_list(searh_page_url, page_limits):
 	r = Room(roomId)
 	attrs = vars(r)
-	print ', '.join("%s: %s" % item for item in attrs.items())
-	convertToCSV(r)
+	d = r.__dict__
+	room_list[r.id] = d
+	print ', '.join("%s: %s" % item for item in attrs.items()) 
+	#convertToCSV(r)
+
+
+df = pd.DataFrame.from_dict(room_list).T
+
+#print df.head()
+#plt.plot(df['price'], df['rating'])
+#plt.show()
+writer = ExcelWriter(xlsx_filename)
+df.to_excel(writer, 'sheet1')
+writer.save()
+
+
 
 if len(open(errorlog).readlines()) == 0:
 	os.system("rm " + errorlog)
